@@ -17,6 +17,7 @@ from tools.read_and_write import load_data_path
 def render_cmd(result_dict):
     #render rgb
     command = [g_blender_excutable_path, '--background', '--python', 'render_all.py', '--', result_dict]
+    #print("****result path********", result_dict)
     subprocess.run(command)
 
 def group_by_cpu(result_list, count):
@@ -45,7 +46,7 @@ if __name__ == '__main__':
         os.mkdir(model_view_dir)
 
     # save for parallel rendering
-    count = 4
+    count = 2
     print('Core Num: %d are used.' % (count))
 
     result_list_by_group = group_by_cpu(result_list, count)

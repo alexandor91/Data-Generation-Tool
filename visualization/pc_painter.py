@@ -78,7 +78,7 @@ class PC_from_DEP(object):
         camera.SetPosition(*position)
         camera.SetFocalPoint(*focal_point[0])
         camera.SetViewUp(*focal_point[1])
-        camera.SetViewAngle((2*np.arctan(cam_K[1][2]/cam_K[0][0]))/np.pi*180)
+        camera.SetViewAngle((2*np.arctan(cam_K[1][2]/cam_K[0][0]))/np.pi*90) #default is 180 degrees
         return camera
 
     def get_point_cloud(self, depth_maps, cam_Ks, cam_RTs, rgb_imgs=None):
@@ -252,7 +252,7 @@ class PC_from_DEP(object):
         # self defined
         axes = vtk.vtkAxesActor()
         axes.SetUserTransform(transform)
-        axes.SetTotalLength(0.3, 0.3, 0.3)
+        axes.SetTotalLength(0.03, 0.03, 0.03)
 
         axes.SetTipTypeToCone()
         axes.SetConeRadius(30e-2)
@@ -354,7 +354,7 @@ class PC_from_DEP(object):
         renderer.ResetCamera()
 
         '''set camera property'''
-        cam_id = 7
+        cam_id = 1
         center = self._point_clouds['cam'][cam_id]['pos']
         focal_point = self._point_clouds['cam'][cam_id]['fp']
         up = self._point_clouds['cam'][cam_id]['up']

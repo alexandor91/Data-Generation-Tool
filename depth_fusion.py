@@ -16,10 +16,113 @@ from functools import partial
 from tools.utils import dist_to_dep
 from settings import cpu_cores
 from tools.read_and_write import load_data_path
-
+import math
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 
 voxel_res = 256
-truncation_factor = 10
+truncation_factor = 5
+
+
+# ### 3D View
+def plot3Dgrid(grid, az, el):
+    # plot the surface
+    plt3d = plt.figure(figsize=(1, 1)).gca()
+
+    # create x,y
+    ll, bb = np.meshgrid(range(grid.shape[2]), range(grid.shape[1]))
+
+    for z in range(grid.shape[2]):
+        #if not (np.max(grid[1,:,:,z])==np.min(grid[1,:,:,z])): # unberührte Ebenen nicht darstellen
+        cp = plt3d.contourf(ll, bb, grid[0,:,:,z], offset = z, alpha=0.3, cmap=cm.Greens)
+
+    cbar = plt.colorbar(cp, shrink=0.7, aspect=20)
+    cbar.ax.set_ylabel('$P(m|z,x)$')
+    
+    plt3d.set_xlabel('X')
+    plt3d.set_ylabel('Y')
+    #plt3d.set_zlabel('Z')
+    #plt3d.set_xlim3d(0, grid.shape[1])
+    #plt3d.set_ylim3d(0, grid.shape[2])
+    #plt3d.set_zlim3d(0, grid.shape[3])
+    #plt3d.axis('equal')
+    #plt3d.view_init(az, el)
+    return plt3d
+
+def process_occgrid(obj_path, view_ids, cam_Ks, cam_RTs):
+    '''
+    script for prepare occupancy grids for training
+    :param obj (str): object path
+    :param view_ids (N-d list): which view ids would like to render (from 1 to total_view_nums).
+    :param cam_Ks (N x 3 x 3): camera intrinsic parameters.
+    :param cam_RTs (N x 3 x 3): camera extrinsic parameters.
+    :return:
+    '''
+    #print("$$$$$$$$$$$$$")
+    #print(obj_path)
+    cat, model = obj_path.split('/')[3:5]
+
+    '''Decide save path'''
+    output_file = os.path.join(watertight_mesh_path, cat, model, 'model.off')
+
+    #if os.path.exists(output_file):
+    #    return None
+
+    #if not os.path.exists(os.path.join(watertight_mesh_path, cat, model)):
+    #    os.makedirs(os.path.join(watertight_mesh_path, cat, model))
+
+    '''Begin to process'''
+    obj_dir = os.path.join(shapenet_rendering_path, cat, model)
+    dist_map_dir = [os.path.join(obj_dir, 'depth_{0:03d}.exr'.format(view_id)) for view_id in view_ids]
+
+    dist_maps = read_exr(dist_map_dir)
+    depth_maps = np.float32(dist_to_dep(dist_maps, cam_Ks, erosion_size = 2))
+
+    cam_Rs = np.float32(cam_RTs[:, :, :-1])
+    cam_Ts = np.float32(cam_RTs[:, :, -1])
+
+    views = pyfusion.PyViews(depth_maps, cam_Ks, cam_Rs, cam_Ts)
+
+    voxel_size = 1. / voxel_res
+    truncation = truncation_factor * voxel_size
+    
+    occ = pyfusion.occupancy_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, truncation, False)
+
+    #print("@@@@@@@@@@@@@@@@@@@")
+    #print(np.shape(occ))  
+    #print(occ)  
+
+    #tsdf = pyfusion.tsdf_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, truncation, False)
+    mask_grid = pyfusion.projmask_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, False)
+    occ[mask_grid == 0.] = truncation
+
+    # rotate to the correct system
+    occ = np.transpose(tsdf[0], [2, 1, 0])
+
+    xyz = np.zeros((256*256*256, 3))
+    xyz[:, 0] = np.reshape(mesh_x, -1)
+    xyz[:, 1] = np.reshape(mesh_y, -1)
+    print('xyz')
+    print(xyz)
+
+    # Pass xyz to Open3D.o3d.geometry.PointCloud and visualize
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(xyz)
+    o3d.io.write_point_cloud("../../TestData/sync.ply", pcd)
+
+    # Load saved point cloud and visualize it
+    pcd_load = o3d.io.read_point_cloud("../../TestData/sync.ply")
+    o3d.visualization.draw_geometries([pcd_load])
+
+    # convert Open3D.o3d.geometry.PointCloud to numpy array
+    xyz_load = np.asarray(pcd_load.points)
+    print('xyz_load')
+    print(xyz_load)    
+
+    # To ensure that the final mesh is indeed watertight
+    #occ = np.pad(tsdf, 1, 'constant', constant_values=1e6)
+
 
 def process_mesh(obj_path, view_ids, cam_Ks, cam_RTs):
     '''
@@ -30,6 +133,8 @@ def process_mesh(obj_path, view_ids, cam_Ks, cam_RTs):
     :param cam_RTs (N x 3 x 3): camera extrinsic parameters.
     :return:
     '''
+    #print("$$$$$$$$$$$$$")
+    #print(obj_path)
     cat, model = obj_path.split('/')[3:5]
 
     '''Decide save path'''
@@ -87,6 +192,6 @@ if __name__ == '__main__':
     cam_RTs = read_txt(cam_RT_dir)
 
     p = Pool(processes=cpu_cores)
-    p.map(partial(process_mesh, view_ids=view_ids, cam_Ks=cam_Ks, cam_RTs=cam_RTs), all_objects)
+    p.map(partial(process_occgrid, view_ids=view_ids, cam_Ks=cam_Ks, cam_RTs=cam_RTs), all_objects)
     p.close()
     p.join()

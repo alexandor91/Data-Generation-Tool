@@ -8,7 +8,7 @@ sys.path.append('./')
 from data_config import our_categories, shapenet_normalized_path, shapenet_categlory_pair, model_view_path
 
 g_shapenet_path = shapenet_normalized_path
-g_blender_excutable_path = '/home/ynie/Software/blender-2.79b-linux-glibc219-x86_64/blender'
+g_blender_excutable_path = '/home/eavise/blender-2.79-e045fe53f1b0-linux-glibc217-x86_64/blender'
 
 #if you have multiple viewpoint files, add to the dict
 #files contains azimuth,elevation,tilt angles and distance for each row

@@ -72,4 +72,4 @@ model_view_path = './model_view_metadata/result.pkl'
 watertight_mesh_path = './datasets/ShapeNetCore.v2_watertight'
 
 shape_scale_padding = 0
-total_view_nums = 20
+total_view_nums = 2
