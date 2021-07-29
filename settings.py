@@ -71,4 +71,4 @@ g_hilbert_spiral = 512
 
 #total 55 categories
 g_shapenet_categlory_pair = shapenet_categlory_pair
-cpu_cores = 4
+cpu_cores = 1

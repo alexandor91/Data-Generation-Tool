@@ -13,6 +13,7 @@ import vtk
 from tools.utils import dist_to_dep
 import point_cloud_utils as pcu
 import random
+import open3d as o3d
 
 class PC_from_DEP(object):
     def __init__(self, metadata_dir, camera_path, view_ids, with_normal=True):
@@ -124,10 +125,22 @@ class PC_from_DEP(object):
             up = np.array([0,-1,0]).dot(cam_RT[:,:-1])
 
             cam_pos = {'pos':cam_pos, 'fp':focal_point, 'up':up}
-
-            point_list_canonical.append(point_canonical)
+            for i in range(len(point_canonical)):
+                point_list_canonical.append(point_canonical[i])
             camera_positions.append(cam_pos)
             color_intensities.append(color_indices)
+
+
+        # Pass xyz to Open3D.o3d.geometry.PointCloud and save
+        #np.squeeze(point_list_canonical)
+
+        #np.reshape(point_list_canonical, (len(point_list_canonical), 3))
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!')
+        print(point_list_canonical)
+        canonical_pcd = o3d.geometry.PointCloud()
+        canonical_pcd.points = o3d.utility.Vector3dVector(point_list_canonical)
+        o3d.visualization.draw_geometries([canonical_pcd])
+        o3d.io.write_point_cloud("test.ply", canonical_pcd)
 
         return {'pc': point_list_canonical, 'cam': camera_positions, 'color': color_intensities}
 

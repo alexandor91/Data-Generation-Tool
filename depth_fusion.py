@@ -7,7 +7,7 @@ import sys
 sys.path.append('.')
 import os
 from external import pyfusion
-from data_config import shapenet_rendering_path, watertight_mesh_path, camera_setting_path, total_view_nums, shapenet_path
+from data_config import shapenet_rendering_path, watertight_mesh_path, camera_setting_path, total_view_nums, shapenet_normalized_path
 from tools.read_and_write import read_exr, read_txt, read_json
 import numpy as np
 import mcubes
@@ -20,6 +20,12 @@ import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
+
+# Must be imported before large libs
+try:
+    import open3d as o3d
+except ImportError:
+    raise ImportError("Please install open3d with `pip install open3d`.")
 
 voxel_res = 256
 truncation_factor = 5
@@ -42,7 +48,7 @@ def plot3Dgrid(grid, az, el):
     
     plt3d.set_xlabel('X')
     plt3d.set_ylabel('Y')
-    #plt3d.set_zlabel('Z')
+    plt3d.set_zlabel('Z')
     #plt3d.set_xlim3d(0, grid.shape[1])
     #plt3d.set_ylim3d(0, grid.shape[2])
     #plt3d.set_zlim3d(0, grid.shape[3])
@@ -73,52 +79,45 @@ def process_occgrid(obj_path, view_ids, cam_Ks, cam_RTs):
     #    os.makedirs(os.path.join(watertight_mesh_path, cat, model))
 
     '''Begin to process'''
-    obj_dir = os.path.join(shapenet_rendering_path, cat, model)
-    dist_map_dir = [os.path.join(obj_dir, 'depth_{0:03d}.exr'.format(view_id)) for view_id in view_ids]
+    #obj_dir = os.path.join(shapenet_rendering_path, cat, model)
+    #dist_map_dir = [os.path.join(obj_dir, 'depth_{0:03d}.exr'.format(view_id)) for view_id in view_ids]
 
-    dist_maps = read_exr(dist_map_dir)
-    depth_maps = np.float32(dist_to_dep(dist_maps, cam_Ks, erosion_size = 2))
+    #dist_maps = read_exr(dist_map_dir)
+    #depth_maps = np.float32(dist_to_dep(dist_maps, cam_Ks, erosion_size = 2))
 
-    cam_Rs = np.float32(cam_RTs[:, :, :-1])
-    cam_Ts = np.float32(cam_RTs[:, :, -1])
+    #cam_Rs = np.float32(cam_RTs[:, :, :-1])
+    #cam_Ts = np.float32(cam_RTs[:, :, -1])
 
-    views = pyfusion.PyViews(depth_maps, cam_Ks, cam_Rs, cam_Ts)
+    #views = pyfusion.PyViews(depth_maps, cam_Ks, cam_Rs, cam_Ts)
 
-    voxel_size = 1. / voxel_res
-    truncation = truncation_factor * voxel_size
+    #voxel_size = 1. / voxel_res
+    #truncation = truncation_factor * voxel_size
     
-    occ = pyfusion.occupancy_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, truncation, False)
+    #occ = pyfusion.occupancy_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, truncation, False)
 
     #print("@@@@@@@@@@@@@@@@@@@")
     #print(np.shape(occ))  
     #print(occ)  
 
     #tsdf = pyfusion.tsdf_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, truncation, False)
-    mask_grid = pyfusion.projmask_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, False)
-    occ[mask_grid == 0.] = truncation
+    #mask_grid = pyfusion.projmask_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, False)
+    #occ[mask_grid == 0.] = truncation
 
     # rotate to the correct system
-    occ = np.transpose(tsdf[0], [2, 1, 0])
-
-    xyz = np.zeros((256*256*256, 3))
-    xyz[:, 0] = np.reshape(mesh_x, -1)
-    xyz[:, 1] = np.reshape(mesh_y, -1)
-    print('xyz')
-    print(xyz)
-
-    # Pass xyz to Open3D.o3d.geometry.PointCloud and visualize
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(xyz)
-    o3d.io.write_point_cloud("../../TestData/sync.ply", pcd)
+    #occ = np.transpose(occ[0], [2, 1, 0])
+    #print(np.shape(occ))  
+    #print(occ)
 
     # Load saved point cloud and visualize it
-    pcd_load = o3d.io.read_point_cloud("../../TestData/sync.ply")
-    o3d.visualization.draw_geometries([pcd_load])
+    pcd_load = o3d.io.read_point_cloud("test-pcl/test.ply")
+    #o3d.visualization.draw_geometries([pcd_load])
 
     # convert Open3D.o3d.geometry.PointCloud to numpy array
-    xyz_load = np.asarray(pcd_load.points)
-    print('xyz_load')
-    print(xyz_load)    
+    print('voxelization begins!')
+    voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd_load,
+                                                                voxel_size=0.025)
+    #o3d.visualization.draw_geometries([voxel_grid]) 
+    o3d.io.write_voxel_grid("test-pcl/test.vox", voxel_grid)
 
     # To ensure that the final mesh is indeed watertight
     #occ = np.pad(tsdf, 1, 'constant', constant_values=1e6)
@@ -140,8 +139,8 @@ def process_mesh(obj_path, view_ids, cam_Ks, cam_RTs):
     '''Decide save path'''
     output_file = os.path.join(watertight_mesh_path, cat, model, 'model.off')
 
-    if os.path.exists(output_file):
-        return None
+    #if os.path.exists(output_file):
+    #    return None
 
     if not os.path.exists(os.path.join(watertight_mesh_path, cat, model)):
         os.makedirs(os.path.join(watertight_mesh_path, cat, model))
@@ -169,6 +168,8 @@ def process_mesh(obj_path, view_ids, cam_Ks, cam_RTs):
 
     # To ensure that the final mesh is indeed watertight
     tsdf = np.pad(tsdf, 1, 'constant', constant_values=1e6)
+    #print('tsdf')
+    #print(tsdf)    
     vertices, triangles = mcubes.marching_cubes(-tsdf, 0)
     # Remove padding offset
     vertices -= 1
@@ -180,7 +181,7 @@ def process_mesh(obj_path, view_ids, cam_Ks, cam_RTs):
 
 if __name__ == '__main__':
     '''generate watertight meshes by patch'''
-    all_objects = load_data_path(shapenet_path)
+    all_objects = load_data_path(shapenet_normalized_path)
 
     '''camera views'''
     view_ids = range(1, total_view_nums + 1)
