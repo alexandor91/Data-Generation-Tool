@@ -135,10 +135,11 @@ class PC_from_DEP(object):
         #np.squeeze(point_list_canonical)
 
         #np.reshape(point_list_canonical, (len(point_list_canonical), 3))
-        print('!!!!!!!!!!!!!!!!!!!!!!!!!')
-        print(point_list_canonical)
+        #print('!!!!!!!!!!!!!!!!!!!!!!!!!')
+        #print(point_list_canonical)
         canonical_pcd = o3d.geometry.PointCloud()
         canonical_pcd.points = o3d.utility.Vector3dVector(point_list_canonical)
+        canonical_pcd.paint_uniform_color([0.2, 0.5, 0.2])
         o3d.visualization.draw_geometries([canonical_pcd])
         o3d.io.write_point_cloud("test.ply", canonical_pcd)
 

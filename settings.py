@@ -57,8 +57,8 @@ g_depth_use_file_extension = True
 g_engine_type = 'CYCLES'
 
 #output image size =  (g_resolution_x * resolution_percentage%, g_resolution_y * resolution_percentage%)
-g_resolution_x = 512
-g_resolution_y = 512
+g_resolution_x = 256
+g_resolution_y = 256
 g_resolution_percentage = 100
 
 

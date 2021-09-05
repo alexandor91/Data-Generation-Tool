@@ -27,8 +27,8 @@ try:
 except ImportError:
     raise ImportError("Please install open3d with `pip install open3d`.")
 
-voxel_res = 256
-truncation_factor = 5
+voxel_res = 256        # resolution parameter for our voxel size
+truncation_factor = 10     # truncation threshold along the watertight surface
 
 
 # ### 3D View
@@ -133,7 +133,6 @@ def process_mesh(obj_path, view_ids, cam_Ks, cam_RTs):
     :return:
     '''
     #print("$$$$$$$$$$$$$")
-    #print(obj_path)
     cat, model = obj_path.split('/')[3:5]
 
     '''Decide save path'''
@@ -161,6 +160,10 @@ def process_mesh(obj_path, view_ids, cam_Ks, cam_RTs):
     truncation = truncation_factor * voxel_size
     tsdf = pyfusion.tsdf_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, truncation, False)
     mask_grid = pyfusion.projmask_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, False)
+    print('mask')
+    print(np.shape(mask_grid))  
+    if mask_grid.any() == 0. :
+        print('!!!!!!!!!!!equal to  zero!!!!!!!!!!!!!')
     tsdf[mask_grid == 0.] = truncation
 
     # rotate to the correct system
@@ -168,8 +171,8 @@ def process_mesh(obj_path, view_ids, cam_Ks, cam_RTs):
 
     # To ensure that the final mesh is indeed watertight
     tsdf = np.pad(tsdf, 1, 'constant', constant_values=1e6)
-    #print('tsdf')
-    #print(tsdf)    
+    # print('tsdf')
+    # print(tsdf)    
     vertices, triangles = mcubes.marching_cubes(-tsdf, 0)
     # Remove padding offset
     vertices -= 1
@@ -193,6 +196,6 @@ if __name__ == '__main__':
     cam_RTs = read_txt(cam_RT_dir)
 
     p = Pool(processes=cpu_cores)
-    p.map(partial(process_occgrid, view_ids=view_ids, cam_Ks=cam_Ks, cam_RTs=cam_RTs), all_objects)
+    p.map(partial(process_mesh, view_ids=view_ids, cam_Ks=cam_Ks, cam_RTs=cam_RTs), all_objects)
     p.close()
     p.join()

@@ -19,7 +19,7 @@ if __name__ == '__main__':
     #'02818832/e91c2df09de0d4b1ed4d676215f46734' # bed 
     #'02818832/f7edc3cc11e8bc43869a5f86d182e67f' #bed 
 
-    n_views = 2
+    n_views = 20
     assert n_views <= total_view_nums # there are total 20 views surrounding an object.
     view_ids = range(1, n_views+1)
     metadata_dir = os.path.join(shapenet_rendering_path, depth_sample_dir)
