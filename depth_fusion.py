@@ -20,6 +20,7 @@ import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
+from PIL import Image
 
 # Must be imported before large libs
 try:
@@ -28,7 +29,7 @@ except ImportError:
     raise ImportError("Please install open3d with `pip install open3d`.")
 
 voxel_res = 256        # resolution parameter for our voxel size
-truncation_factor = 10     # truncation threshold along the watertight surface
+truncation_factor = 20     # truncation threshold along the watertight surface
 
 
 # ### 3D View
@@ -160,8 +161,8 @@ def process_mesh(obj_path, view_ids, cam_Ks, cam_RTs):
     truncation = truncation_factor * voxel_size
     tsdf = pyfusion.tsdf_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, truncation, False)
     mask_grid = pyfusion.projmask_gpu(views, voxel_res, voxel_res, voxel_res, voxel_size, False)
-    print('mask')
-    print(np.shape(mask_grid))  
+    # print('mask')
+    # print(np.shape(mask_grid))  
     if mask_grid.any() == 0. :
         print('!!!!!!!!!!!equal to  zero!!!!!!!!!!!!!')
     tsdf[mask_grid == 0.] = truncation
@@ -170,9 +171,11 @@ def process_mesh(obj_path, view_ids, cam_Ks, cam_RTs):
     tsdf = np.transpose(tsdf[0], [2, 1, 0])
 
     # To ensure that the final mesh is indeed watertight
-    tsdf = np.pad(tsdf, 1, 'constant', constant_values=1e6)
-    # print('tsdf')
-    # print(tsdf)    
+    tsdf = np.pad(tsdf, 1, 'constant', constant_values=1e0)
+    print('tsdf')
+    cross_img = tsdf[128, :, :] * 100
+    PIL_image = Image.fromarray(np.uint8(cross_img)).convert('RGB')
+    PIL_image.show()
     vertices, triangles = mcubes.marching_cubes(-tsdf, 0)
     # Remove padding offset
     vertices -= 1
